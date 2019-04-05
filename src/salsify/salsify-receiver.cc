@@ -203,7 +203,7 @@ int main( int argc, char *argv[] )
 
   /* decoder states */
   uint32_t current_state = player.current_decoder().get_hash().hash();
-  const uint32_t initial_state = current_state;
+  // const uint32_t initial_state = current_state;
   deque<uint32_t> complete_states;
   unordered_map<uint32_t, Decoder> decoders { { current_state, player.current_decoder() } };
 
@@ -231,15 +231,15 @@ int main( int argc, char *argv[] )
         cerr << "got a packet for frame #" << packet.frame_no()
              << ", display previous frame(s)." << endl;
 
-        for ( size_t i = next_frame_no; i < packet.frame_no(); i++ ) {
-          if ( fragmented_frames.count( i ) == 0 ) continue;
+        // for ( size_t i = next_frame_no; i < packet.frame_no(); i++ ) {
+        //   if ( fragmented_frames.count( i ) == 0 ) continue;
 
-          enqueue_frame( player, fragmented_frames.at( i ).partial_frame() );
-          fragmented_frames.erase( i );
-        }
+        //   enqueue_frame( player, fragmented_frames.at( i ).partial_frame() );
+        //   fragmented_frames.erase( i );
+        // }
 
         next_frame_no = packet.frame_no();
-        current_state = player.current_decoder().minihash();
+        // current_state = player.current_decoder().minihash();
       }
 
       /* add to current frame */
@@ -260,52 +260,53 @@ int main( int argc, char *argv[] )
 
       /* is the next frame ready to be decoded? */
       if ( fragmented_frames.count( next_frame_no ) > 0 and fragmented_frames.at( next_frame_no ).complete() ) {
-        auto & fragment = fragmented_frames.at( next_frame_no );
+        // auto & fragment = fragmented_frames.at( next_frame_no );
 
-        uint32_t expected_source_state = fragment.source_state();
+        // uint32_t expected_source_state = fragment.source_state();
 
-        if ( current_state != expected_source_state ) {
-          if ( decoders.count( expected_source_state ) ) {
-            /* we have this state! let's load it */
-            player.set_decoder( decoders.at( expected_source_state ) );
-            current_state = expected_source_state;
-          }
-        }
+        // if ( current_state != expected_source_state ) {
+        //   if ( decoders.count( expected_source_state ) ) {
+        //     /* we have this state! let's load it */
+        //     player.set_decoder( decoders.at( expected_source_state ) );
+        //     current_state = expected_source_state;
+        //   }
+        // }
 
-        if ( current_state == expected_source_state and
-             expected_source_state != initial_state ) {
-          /* sender won't refer to any decoder older than this, so let's get
-             rid of them */
+        // if ( current_state == expected_source_state and
+        //      expected_source_state != initial_state ) {
+        //   /* sender won't refer to any decoder older than this, so let's get
+        //      rid of them */
 
-          auto it = complete_states.begin();
+        //   auto it = complete_states.begin();
 
-          for ( ; it != complete_states.end(); it++ ) {
-            if ( *it != expected_source_state ) {
-              decoders.erase( *it );
-            }
-            else {
-              break;
-            }
-          }
+        //   for ( ; it != complete_states.end(); it++ ) {
+        //     if ( *it != expected_source_state ) {
+        //       decoders.erase( *it );
+        //     }
+        //     else {
+        //       break;
+        //     }
+        //   }
 
-          assert( it != complete_states.end() );
-          complete_states.erase( complete_states.begin(), it );
-        }
+        //   assert( it != complete_states.end() );
+        //   complete_states.erase( complete_states.begin(), it );
+        // }
 
-        // here we apply the frame
-        enqueue_frame( player, fragment.frame() );
+        // // here we apply the frame
+        // enqueue_frame( player, fragment.frame() );
 
-        // state "after" applying the frame
-        current_state = player.current_decoder().minihash();
+        // // state "after" applying the frame
+        // current_state = player.current_decoder().minihash();
 
-        if ( current_state == fragment.target_state() and
-             current_state != initial_state ) {
-          /* this is a full state. let's save it */
-          decoders.insert( make_pair( current_state, player.current_decoder() ) );
-          complete_states.push_back( current_state );
-        }
+        // if ( current_state == fragment.target_state() and
+        //      current_state != initial_state ) {
+        //   /* this is a full state. let's save it */
+        //   decoders.insert( make_pair( current_state, player.current_decoder() ) );
+        //   complete_states.push_back( current_state );
+        // }
 
-        fragmented_frames.erase( next_frame_no );
+        // fragmented_frames.erase( next_frame_no );
+        printf("should decode frame %zu\n", next_frame_no);
         next_frame_no++;
       }
 
