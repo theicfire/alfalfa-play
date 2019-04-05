@@ -609,7 +609,7 @@ int main( int argc, char *argv[] )
 
       FragmentedFrame ff { connection_id, output.source_minihash, target_minihash,
                            frame_no,
-                           static_cast<uint32_t>( duration_cast<microseconds>( system_clock::now() - last_sent ).count() ),
+                           static_cast<uint32_t>( duration_cast<microseconds>( system_clock::now() - last_sent ).count() ), // time_since_last
                            output.frame };
       /* enqueue the packets to be sent */
       /* send 5x faster than packets are being received */
@@ -617,6 +617,11 @@ int main( int argc, char *argv[] )
       for ( const auto & packet : ff.packets() ) {
         pacer.push( packet.to_string(), inter_send_delay );
       }
+
+      cout << "avg_delay: " << avg_delay
+          << "inter_send_delay: " << inter_send_delay
+          << "num_packets: " << ff.fragments_in_this_frame()
+          << endl;
 
       last_sent = system_clock::now();
 
@@ -691,6 +696,7 @@ int main( int argc, char *argv[] )
         while ( pacer.ms_until_due() == 0 ) {
           assert( not pacer.empty() );
 
+          cout << "send packet at" << static_cast<uint32_t>( duration_cast<microseconds>( system_clock::now().time_since_epoch() ).count() ) << endl;
           socket.send( pacer.front() );
           pacer.pop();
         }
