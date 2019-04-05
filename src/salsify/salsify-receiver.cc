@@ -141,10 +141,6 @@ int main( int argc, char *argv[] )
     abort();
   }
 
-  /* fullscreen player */
-  bool fullscreen = false;
-  bool verbose = false;
-
   const option command_line_options[] = {
     { "fullscreen", no_argument, nullptr, 'f' },
     { "verbose",    no_argument, nullptr, 'v' },
@@ -160,11 +156,9 @@ int main( int argc, char *argv[] )
 
     switch ( opt ) {
     case 'f':
-      fullscreen = true;
       break;
 
     case 'v':
-      verbose = true;
       break;
 
     default:
@@ -187,28 +181,11 @@ int main( int argc, char *argv[] )
   socket.bind( Address( "0", argv[ optind ] ) );
   socket.set_timestamps();
 
-  /* construct FramePlayer */
-  FramePlayer player( paranoid::stoul( argv[ optind + 1 ] ), paranoid::stoul( argv[ optind + 2 ] ) );
-  player.set_error_concealment( true );
-
-  /* construct display thread */
-  thread( [&player, fullscreen]() { display_task( player.example_raster(), fullscreen ); } ).detach();
-
   /* frame no => FragmentedFrame; used when receiving packets out of order */
   unordered_map<size_t, FragmentedFrame> fragmented_frames;
-  size_t next_frame_no = 0;
 
   /* EWMA */
   AverageInterPacketDelay avg_delay;
-
-  /* decoder states */
-  uint32_t current_state = player.current_decoder().get_hash().hash();
-  const uint32_t initial_state = current_state;
-  deque<uint32_t> complete_states;
-  unordered_map<uint32_t, Decoder> decoders { { current_state, player.current_decoder() } };
-
-  /* memory usage logs */
-  system_clock::time_point next_mem_usage_report = system_clock::now();
 
   Poller poller;
   poller.add_action( Poller::Action( socket, Direction::In,
@@ -216,114 +193,7 @@ int main( int argc, char *argv[] )
     {
       /* wait for next UDP datagram */
       const auto new_fragment = socket.recv();
-
-      /* parse into Packet */
-      const Packet packet { new_fragment.payload };
-
-      if ( packet.frame_no() < next_frame_no ) {
-        /* we're not interested in this anymore */
-        return ResultType::Continue;
-      }
-      else if ( packet.frame_no() > next_frame_no ) {
-        /* current frame is not finished yet, but we just received a packet
-           for the next frame, so here we just encode the partial frame and
-           display it and move on to the next frame */
-        cerr << "got a packet for frame #" << packet.frame_no()
-             << ", display previous frame(s)." << endl;
-
-        for ( size_t i = next_frame_no; i < packet.frame_no(); i++ ) {
-          if ( fragmented_frames.count( i ) == 0 ) continue;
-
-          enqueue_frame( player, fragmented_frames.at( i ).partial_frame() );
-          fragmented_frames.erase( i );
-        }
-
-        next_frame_no = packet.frame_no();
-        current_state = player.current_decoder().minihash();
-      }
-
-      /* add to current frame */
-      if ( fragmented_frames.count( packet.frame_no() ) ) {
-        fragmented_frames.at( packet.frame_no() ).add_packet( packet );
-      } else {
-        /*
-          This was judged "too fancy" by the Code Review Board of Dec. 29, 2016.
-
-          fragmented_frames.emplace( std::piecewise_construct,
-                                     forward_as_tuple( packet.frame_no() ),
-                                     forward_as_tuple( connection_id, packet ) );
-        */
-
-        fragmented_frames.insert( make_pair( packet.frame_no(),
-                                             FragmentedFrame( connection_id, packet ) ) );
-      }
-
-      /* is the next frame ready to be decoded? */
-      if ( fragmented_frames.count( next_frame_no ) > 0 and fragmented_frames.at( next_frame_no ).complete() ) {
-        auto & fragment = fragmented_frames.at( next_frame_no );
-
-        uint32_t expected_source_state = fragment.source_state();
-
-        if ( current_state != expected_source_state ) {
-          if ( decoders.count( expected_source_state ) ) {
-            /* we have this state! let's load it */
-            player.set_decoder( decoders.at( expected_source_state ) );
-            current_state = expected_source_state;
-          }
-        }
-
-        if ( current_state == expected_source_state and
-             expected_source_state != initial_state ) {
-          /* sender won't refer to any decoder older than this, so let's get
-             rid of them */
-
-          auto it = complete_states.begin();
-
-          for ( ; it != complete_states.end(); it++ ) {
-            if ( *it != expected_source_state ) {
-              decoders.erase( *it );
-            }
-            else {
-              break;
-            }
-          }
-
-          assert( it != complete_states.end() );
-          complete_states.erase( complete_states.begin(), it );
-        }
-
-        // here we apply the frame
-        enqueue_frame( player, fragment.frame() );
-
-        // state "after" applying the frame
-        current_state = player.current_decoder().minihash();
-
-        if ( current_state == fragment.target_state() and
-             current_state != initial_state ) {
-          /* this is a full state. let's save it */
-          decoders.insert( make_pair( current_state, player.current_decoder() ) );
-          complete_states.push_back( current_state );
-        }
-
-        fragmented_frames.erase( next_frame_no );
-        next_frame_no++;
-      }
-
-      avg_delay.add( new_fragment.timestamp_us, packet.time_since_last() );
-
-      AckPacket( connection_id, packet.frame_no(), packet.fragment_no(),
-                 avg_delay.int_value(), current_state,
-                 complete_states ).sendto( socket, new_fragment.source_address );
-
-      auto now = system_clock::now();
-
-      if ( verbose and next_mem_usage_report < now ) {
-        cerr << "["
-             << duration_cast<milliseconds>( now.time_since_epoch() ).count()
-             << "] "
-             << " <mem = " << procinfo::memory_usage() << ">\n";
-        next_mem_usage_report = now + 5s;
-      }
+      printf("Got a fragment: %s\n", new_fragment.payload.c_str());
 
       return ResultType::Continue;
     },

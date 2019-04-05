@@ -239,6 +239,7 @@ int main(int argc, char *argv[]) {
     Optional<uint32_t> receiver_last_acked_state;
     Optional<uint32_t> receiver_assumed_state;
     deque<uint32_t> receiver_complete_states;
+    uint32_t count = 0;
 
     /* if the receiver goes into an invalid state, for this amount of seconds,
        we will go into a conservative mode: we only encode based on a known
@@ -257,8 +258,13 @@ int main(int argc, char *argv[]) {
             string output = make_magic_happen.second.read();
             printf("This is the poller message %s\n", output.c_str());
 
-            string msg = "hello";
-            pacer.push(msg, 2000u);
+            char buffer[1400];
+            memset(buffer, 'X', 1400);
+            for (int i = 0; i < 1000; i++) {
+                sprintf(buffer + 10, "%d", i);
+                string msg = buffer;
+                pacer.push(msg, 200u);
+            }
 
             return ResultType::Continue;
         }));
@@ -298,6 +304,8 @@ int main(int argc, char *argv[]) {
                            while (pacer.ms_until_due() == 0) {
                                assert(not pacer.empty());
 
+                               count += 1;
+                               printf("Sending %d\n", count);
                                socket.send(pacer.front());
                                pacer.pop();
                            }
