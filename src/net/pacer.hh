@@ -63,7 +63,8 @@ public:
   void push( const std::string & payload, const int delay_microseconds )
   {
     if ( empty() ) {
-      queue_.push_back( { std::chrono::system_clock::now(), payload } );
+      // TODO undo this addition. It is interesting this is here though.. immediately send anything you have if your queue is small, hum!
+      queue_.push_back( { std::chrono::system_clock::now() + std::chrono::microseconds( delay_microseconds ), payload } );
     } else {
       queue_.push_back( { queue_.back().when + std::chrono::microseconds( delay_microseconds ),
                           payload } );

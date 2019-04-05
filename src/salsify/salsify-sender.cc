@@ -58,22 +58,29 @@ using namespace std;
 using namespace std::chrono;
 using namespace PollerShortNames;
 
-class AverageEncodingTime {
-   private:
+class AverageEncodingTime
+{
+  private:
     static constexpr double ALPHA = 0.1;
 
     double value_{-1.0};
     microseconds last_update_{0};
 
-   public:
-    void add(const microseconds timestamp_us) {
+  public:
+    void add(const microseconds timestamp_us)
+    {
         assert(timestamp_us >= last_update_);
 
-        if (value_ < 0) {
+        if (value_ < 0)
+        {
             value_ = 0;
-        } else if (timestamp_us - last_update_ > 1s /* 1 seconds */) {
+        }
+        else if (timestamp_us - last_update_ > 1s /* 1 seconds */)
+        {
             value_ = 0;
-        } else {
+        }
+        else
+        {
             double new_value =
                 max(0l, duration_cast<microseconds>(timestamp_us - last_update_)
                             .count());
@@ -86,7 +93,8 @@ class AverageEncodingTime {
     uint32_t int_value() const { return static_cast<uint32_t>(value_); }
 };
 
-struct EncodeJob {
+struct EncodeJob
+{
     string name;
 
     RasterHandle raster;
@@ -108,7 +116,8 @@ struct EncodeJob {
           target_size(target_size) {}
 };
 
-struct EncodeOutput {
+struct EncodeOutput
+{
     Encoder encoder;
     vector<uint8_t> frame;
     uint32_t source_minihash;
@@ -127,7 +136,8 @@ struct EncodeOutput {
           y_ac_qi(y_ac_qi) {}
 };
 
-EncodeOutput do_encode_job(EncodeJob &&encode_job) {
+EncodeOutput do_encode_job(EncodeJob &&encode_job)
+{
     vector<uint8_t> output;
 
     uint32_t source_minihash = encode_job.encoder.minihash();
@@ -136,20 +146,21 @@ EncodeOutput do_encode_job(EncodeJob &&encode_job) {
 
     uint8_t quantizer_in_use = 0;
 
-    switch (encode_job.mode) {
-        case CONSTANT_QUANTIZER:
-            output = encode_job.encoder.encode_with_quantizer(
-                encode_job.raster.get(), encode_job.y_ac_qi);
-            quantizer_in_use = encode_job.y_ac_qi;
-            break;
+    switch (encode_job.mode)
+    {
+    case CONSTANT_QUANTIZER:
+        output = encode_job.encoder.encode_with_quantizer(
+            encode_job.raster.get(), encode_job.y_ac_qi);
+        quantizer_in_use = encode_job.y_ac_qi;
+        break;
 
-        case TARGET_FRAME_SIZE:
-            output = encode_job.encoder.encode_with_target_size(
-                encode_job.raster.get(), encode_job.target_size);
-            break;
+    case TARGET_FRAME_SIZE:
+        output = encode_job.encoder.encode_with_target_size(
+            encode_job.raster.get(), encode_job.target_size);
+        break;
 
-        default:
-            throw runtime_error("unsupported encoding mode.");
+    default:
+        throw runtime_error("unsupported encoding mode.");
     }
 
     const auto encode_ending = system_clock::now();
@@ -157,15 +168,17 @@ EncodeOutput do_encode_job(EncodeJob &&encode_job) {
         duration_cast<milliseconds>(encode_ending - encode_beginning);
 
     return {move(encode_job.encoder), move(output),
-            source_minihash,          ms_elapsed,
-            encode_job.name,          quantizer_in_use};
+            source_minihash, ms_elapsed,
+            encode_job.name, quantizer_in_use};
 }
 
 size_t target_size(uint32_t avg_delay, const uint64_t last_acked,
                    const uint64_t last_sent,
                    const uint32_t max_delay = 100 *
-                                              1000 /* 100 ms = 100,000 us */) {
-    if (avg_delay == 0) {
+                                              1000 /* 100 ms = 100,000 us */)
+{
+    if (avg_delay == 0)
+    {
         avg_delay = 1;
     }
 
@@ -178,7 +191,8 @@ size_t target_size(uint32_t avg_delay, const uint64_t last_acked,
                                                (last_sent - last_acked)));
 }
 
-void usage(const char *argv0) {
+void usage(const char *argv0)
+{
     cerr
         << "Usage: " << argv0
         << " [-m,--mode MODE] [-d, --device CAMERA] [-p, --pixfmt PIXEL_FORMAT]"
@@ -189,21 +203,30 @@ void usage(const char *argv0) {
 }
 
 uint64_t ack_seq_no(const AckPacket &ack,
-                    const vector<uint64_t> &cumulative_fpf) {
+                    const vector<uint64_t> &cumulative_fpf)
+{
     return (ack.frame_no() > 0)
                ? (cumulative_fpf[ack.frame_no() - 1] + ack.fragment_no())
                : ack.fragment_no();
 }
 
-enum class OperationMode { S1, S2, Conventional };
+enum class OperationMode
+{
+    S1,
+    S2,
+    Conventional
+};
 
-int main(int argc, char *argv[]) {
+int main(int argc, char *argv[])
+{
     /* check the command-line arguments */
-    if (argc < 1) { /* for sticklers */
+    if (argc < 1)
+    { /* for sticklers */
         abort();
     }
 
-    if (argc < 4) {
+    if (argc < 4)
+    {
         usage(argv[0]);
         return EXIT_FAILURE;
     }
@@ -254,17 +277,17 @@ int main(int argc, char *argv[]) {
     /* all encode jobs have finished */
     poller.add_action(
         Poller::Action(make_magic_happen.second, Direction::In, [&]() {
-            printf("Hello, I got a message\n");
             string output = make_magic_happen.second.read();
-            printf("This is the poller message %s\n", output.c_str());
 
             char buffer[1400];
             memset(buffer, 'X', 1400);
-            for (int i = 0; i < 1000; i++) {
-                sprintf(buffer + 10, "%d", i);
-                string msg = buffer;
-                pacer.push(msg, 200u);
-            }
+
+            count += 1;
+            sprintf(buffer + 10, "%d", count);
+            string msg = buffer;
+            pacer.push(msg, 230u);
+
+            
 
             return ResultType::Continue;
         }));
@@ -274,7 +297,8 @@ int main(int argc, char *argv[]) {
         auto packet = socket.recv();
         AckPacket ack(packet.payload);
 
-        if (ack.connection_id() != connection_id) {
+        if (ack.connection_id() != connection_id)
+        {
             /* this is not an ack for this session! */
             return ResultType::Continue;
         }
@@ -282,7 +306,8 @@ int main(int argc, char *argv[]) {
         uint64_t this_ack_seq = ack_seq_no(ack, cumulative_fpf);
 
         if (last_acked != numeric_limits<uint64_t>::max() and
-            this_ack_seq < last_acked) {
+            this_ack_seq < last_acked)
+        {
             /* we have already received an ACK newer than this */
             return ResultType::Continue;
         }
@@ -300,13 +325,15 @@ int main(int argc, char *argv[]) {
         Poller::Action(socket, Direction::Out,
                        [&]() {
                            assert(pacer.ms_until_due() == 0);
+                           cout << "call here" << endl;
 
-                           while (pacer.ms_until_due() == 0) {
+                           while (pacer.ms_until_due() == 0)
+                           {
                                assert(not pacer.empty());
 
-                               count += 1;
                                printf("Sending %d\n", count);
                                socket.send(pacer.front());
+                               make_magic_happen.first.write("1");
                                pacer.pop();
                            }
 
@@ -318,10 +345,13 @@ int main(int argc, char *argv[]) {
     make_magic_happen.first.write("1");
 
     /* handle events */
-    while (true) {
+    while (true)
+    {
         const auto poll_result = poller.poll(pacer.ms_until_due());
-        if (poll_result.result == Poller::Result::Type::Exit) {
-            if (poll_result.exit_status) {
+        if (poll_result.result == Poller::Result::Type::Exit)
+        {
+            if (poll_result.exit_status)
+            {
                 cerr << "Connection error." << endl;
             }
 
