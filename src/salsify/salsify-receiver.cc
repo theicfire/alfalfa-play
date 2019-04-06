@@ -181,7 +181,7 @@ int main( int argc, char *argv[] )
 
   /* construct Socket for incoming  datagrams */
   UDPSocket socket;
-  socket.bind( Address( "0", argv[ optind ] ) );
+  socket.connect(Address("127.0.0.1", "9000"));
   socket.set_timestamps();
 
   /* frame no => FragmentedFrame; used when receiving packets out of order */
@@ -246,6 +246,8 @@ int main( int argc, char *argv[] )
     [&]() { return not socket.eof(); } )
   );
 
+  string hi = "hello";
+  socket.send(hi);
   /* handle events */
   while ( true ) {
     const auto poll_result = poller.poll( -1 );

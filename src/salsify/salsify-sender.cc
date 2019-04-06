@@ -249,7 +249,7 @@ int main(int argc, char *argv[])
 
     /* construct Socket for outgoing datagrams */
     UDPSocket socket;
-    socket.connect(Address(argv[1], argv[2]));
+    socket.bind( Address( "0", "9000" ) );
     socket.set_timestamps();
 
 
@@ -262,6 +262,10 @@ int main(int argc, char *argv[])
       }
       
     
+    cout << "Waiting to receive" << endl;
+    const auto new_fragment = socket.recv();
+    socket.connect(new_fragment.source_address);
+    cout << "Done receiving" << endl;
     /* handle events */
     while (true)
     {
