@@ -61,9 +61,11 @@ private:
   uint64_t last_update_{ 0 };
 
 public:
-  void add( const uint64_t timestamp_us, const int32_t grace )
+  uint32_t add( const uint64_t timestamp_us, const int32_t grace )
   {
     assert( timestamp_us >= last_update_ );
+    uint32_t ret = timestamp_us - last_update_ - grace;
+    
 
     if ( value_ < 0 ) {
       value_ = 0;
@@ -77,6 +79,7 @@ public:
     }
 
     last_update_ = timestamp_us;
+    return ret;
   }
 
   uint32_t int_value() const { return static_cast<uint32_t>( value_ ); }
@@ -186,6 +189,9 @@ int main( int argc, char *argv[] )
 
   /* EWMA */
   AverageInterPacketDelay avg_delay;
+  // size_t next_frame_no = 0;
+  deque<uint32_t> complete_states;
+  uint32_t expected_packet_no = 0;
 
   Poller poller;
   poller.add_action( Poller::Action( socket, Direction::In,
@@ -193,7 +199,47 @@ int main( int argc, char *argv[] )
     {
       /* wait for next UDP datagram */
       const auto new_fragment = socket.recv();
-      printf("Got a fragment: %s\n", new_fragment.payload.c_str());
+      const Packet packet { new_fragment.payload };
+      // cout << packet.frame_no() * packet.fragments_in_this_frame() + packet.fragment_no() << "\t" << expected_packet_no << endl;
+      expected_packet_no++;
+
+      uint32_t delay = avg_delay.add( new_fragment.timestamp_us, packet.time_since_last() );
+      cout << expected_packet_no << "\t" << delay << endl;
+
+      // if ( packet.frame_no() < next_frame_no ) {
+      //   /* we're not interested in this anymore */
+      //   cout << "skip frame.. too old" << endl;
+      //   return ResultType::Continue;
+      // }
+      // else if ( packet.frame_no() > next_frame_no ) {
+      //   /* current frame is not finished yet, but we just received a packet
+      //      for the next frame, so here we just encode the partial frame and
+      //      display it and move on to the next frame */
+      //   cout << "got a packet for future frame #" << packet.frame_no() << endl;
+             
+      //   next_frame_no = packet.frame_no();
+      // }
+ 
+      // /* add to current frame */
+      // if ( fragmented_frames.count( packet.frame_no() ) ) {
+      //   fragmented_frames.at( packet.frame_no() ).add_packet( packet );
+      // } else {
+
+      //   fragmented_frames.insert( make_pair( packet.frame_no(),
+      //                                        FragmentedFrame( connection_id, packet ) ) );
+      // }
+
+      // if ( fragmented_frames.count( next_frame_no ) > 0 and fragmented_frames.at( next_frame_no ).complete() ) {
+      //   cout << "Got a full packet #" << next_frame_no << endl;
+      //   next_frame_no += 1;
+      // }
+
+      // AckPacket( connection_id, packet.frame_no(), packet.fragment_no(),
+      //           avg_delay.int_value(), (uint32_t) 22,
+      //           complete_states).sendto( socket, new_fragment.source_address );
+
+
+      // printf("Got a fragment: %s\n", new_fragment.payload.c_str());
 
       return ResultType::Continue;
     },

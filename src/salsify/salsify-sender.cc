@@ -217,6 +217,22 @@ enum class OperationMode
     Conventional
 };
 
+std::string string_to_hex(const std::string& input)
+{
+    static const char* const lut = "0123456789ABCDEF";
+    size_t len = input.length();
+
+    std::string output;
+    output.reserve(2 * len);
+    for (size_t i = 0; i < len; ++i)
+    {
+        const unsigned char c = input[i];
+        output.push_back(lut[c >> 4]);
+        output.push_back(lut[c & 15]);
+    }
+    return output;
+}
+
 int main(int argc, char *argv[])
 {
     /* check the command-line arguments */
@@ -236,127 +252,49 @@ int main(int argc, char *argv[])
     socket.connect(Address(argv[1], argv[2]));
     socket.set_timestamps();
 
-    /* make pacer to smooth out outgoing packets */
-    Pacer pacer;
 
-    /* get connection_id */
-    const uint16_t connection_id = paranoid::stoul(argv[3]);
-
-    /* average inter-packet delay, reported by receiver */
-    uint32_t avg_delay = numeric_limits<uint32_t>::max();
-
-    /* keep the number of fragments per frame */
-    vector<uint64_t> cumulative_fpf;
-    uint64_t last_acked = numeric_limits<uint64_t>::max();
-
-    /* latest raster that is received from the input */
-    Optional<RasterHandle> last_raster;
-
-    /* keep the moving average of encoding times */
-    AverageEncodingTime avg_encoding_time;
-
-    /* decoder hash => encoder object */
-    deque<uint32_t> encoder_states;
-
-    /* latest state of the receiver, based on ack packets */
-    Optional<uint32_t> receiver_last_acked_state;
-    Optional<uint32_t> receiver_assumed_state;
-    deque<uint32_t> receiver_complete_states;
-    uint32_t count = 0;
-
-    /* if the receiver goes into an invalid state, for this amount of seconds,
-       we will go into a conservative mode: we only encode based on a known
-       state */
-    seconds conservative_for{5};
-
-    /* comment */
-    auto make_magic_happen = UnixDomainSocket::make_pair();
-
-    Poller poller;
-
-    /* all encode jobs have finished */
-    poller.add_action(
-        Poller::Action(make_magic_happen.second, Direction::In, [&]() {
-            string output = make_magic_happen.second.read();
-
-            char buffer[1400];
-            memset(buffer, 'X', 1400);
-
-            count += 1;
-            sprintf(buffer + 10, "%d", count);
-            string msg = buffer;
-            pacer.push(msg, 230u);
-
-            
-
-            return ResultType::Continue;
-        }));
-
-    /* new ack from receiver */
-    poller.add_action(Poller::Action(socket, Direction::In, [&]() {
-        auto packet = socket.recv();
-        AckPacket ack(packet.payload);
-
-        if (ack.connection_id() != connection_id)
-        {
-            /* this is not an ack for this session! */
-            return ResultType::Continue;
-        }
-
-        uint64_t this_ack_seq = ack_seq_no(ack, cumulative_fpf);
-
-        if (last_acked != numeric_limits<uint64_t>::max() and
-            this_ack_seq < last_acked)
-        {
-            /* we have already received an ACK newer than this */
-            return ResultType::Continue;
-        }
-
-        last_acked = this_ack_seq;
-        avg_delay = ack.avg_delay();
-        receiver_last_acked_state.reset(ack.current_state());
-        receiver_complete_states = move(ack.complete_states());
-
-        return ResultType::Continue;
-    }));
-
-    /* outgoing packet ready to leave the pacer */
-    poller.add_action(
-        Poller::Action(socket, Direction::Out,
-                       [&]() {
-                           assert(pacer.ms_until_due() == 0);
-                           cout << "call here" << endl;
-
-                           while (pacer.ms_until_due() == 0)
-                           {
-                               assert(not pacer.empty());
-
-                               printf("Sending %d\n", count);
-                               socket.send(pacer.front());
-                               make_magic_happen.first.write("1");
-                               pacer.pop();
-                           }
-
-                           return ResultType::Continue;
-                       },
-                       [&]() { return pacer.ms_until_due() == 0; }));
-
-    /* kick off the first encode */
-    make_magic_happen.first.write("1");
-
+    uint32_t frame_no = 0;
+    system_clock::time_point last_sent = system_clock::now();
+    uint16_t connection_id = 1337;
+    vector<uint8_t> frame;
+      for (int i = 0; i < 80 * 1360; i++) {
+        frame.push_back(i % 256);
+      }
+      
+    
     /* handle events */
     while (true)
     {
-        const auto poll_result = poller.poll(pacer.ms_until_due());
-        if (poll_result.result == Poller::Result::Type::Exit)
-        {
-            if (poll_result.exit_status)
-            {
-                cerr << "Connection error." << endl;
-            }
-
-            return poll_result.exit_status;
+        FragmentedFrame ff { connection_id, 1, 1,
+                        frame_no,
+                      static_cast<uint32_t>( duration_cast<microseconds>( system_clock::now() - last_sent ).count() ),
+                        frame };
+        cout << "Sending frame " << frame_no << " with " << ff.packets().size() << " packets"  << endl;
+        for ( const auto & packet : ff.packets() ) {
+          string packet_string = packet.to_string();
+          
+          //cout << "\nSending packet " << string_to_hex(packet_string) << endl;
+          socket.send(packet.to_string());
         }
+        last_sent = system_clock::now();
+        frame_no += 1;
+        // for (int i = 0; i < 160; i++) {
+        //   frame_no += 1;
+        //   if (count % 100 == 0) {
+        //     cout << "Sending " << frame_no << endl;
+        //   }
+        //   char buffer[1400];
+        //   memset(buffer, 'X', 1400);
+
+        //   sprintf(buffer + 10, "%d", frame_no);
+        //   string msg = buffer;
+        //   socket.send(msg);
+        //   // usleep(100);
+        // }
+        
+        
+        
+        usleep(40000);
     }
 
     return EXIT_FAILURE;
