@@ -43,7 +43,6 @@
 #include "packet.hh"
 #include "poller.hh"
 #include "optional.hh"
-#include "procinfo.hh"
 
 using namespace std;
 using namespace std::chrono;
