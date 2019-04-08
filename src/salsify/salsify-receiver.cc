@@ -42,7 +42,6 @@
 #include "socket.hh"
 #include "packet.hh"
 #include "poller.hh"
-#include "optional.hh"
 
 using namespace std;
 using namespace std::chrono;
