@@ -53,6 +53,7 @@
 using namespace std;
 using namespace std::chrono;
 using namespace PollerShortNames;
+using fecpp::byte;
 
 class AverageEncodingTime {
  private:
@@ -106,8 +107,6 @@ uint64_t ack_seq_no(const AckPacket &ack, const vector<uint64_t> &cumulative_fpf
   return (ack.frame_no() > 0) ? (cumulative_fpf[ack.frame_no() - 1] + ack.fragment_no()) : ack.fragment_no();
 }
 
-enum class OperationMode { S1, S2, Conventional };
-
 std::string string_to_hex(const std::string &input) {
   static const char *const lut = "0123456789ABCDEF";
   size_t len = input.length();
@@ -121,12 +120,6 @@ std::string string_to_hex(const std::string &input) {
   }
   return output;
 }
-
-
-
-using fecpp::byte;
-
-namespace {
 
 class output_checker
    {
@@ -190,8 +183,6 @@ void benchmark_fec(size_t k, size_t n)
    fec.decode(shares, share_len, check_output);
    }
 
-}
-
 void run_fec_stuff() {
    const int Ms[] = {1, 2, 3, 4, 5, 7, 8, 16, 32, 64, 128, 0 };
    const int Ks[] = {1,2,3,4,5,6,7,8,9,10,15,16,17,20,31,32,33,63,64,65,127 ,0};
@@ -211,11 +202,6 @@ void run_fec_stuff() {
          }
       }
 }
-
-
-
-
-
 
 int main(int argc, char *argv[]) {
   /* check the command-line arguments */
