@@ -43,7 +43,6 @@
 #include "packet.hh"
 #include "poller.hh"
 #include "optional.hh"
-#include "paranoid.hh"
 #include "procinfo.hh"
 
 using namespace std;
