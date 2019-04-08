@@ -4,7 +4,6 @@
 AC_PREREQ([2.61])
 AC_INIT([alfalfa], [0.1], [excamera@cs.stanford.edu])
 AM_INIT_AUTOMAKE([foreign tar-ustar])
-AC_CONFIG_SRCDIR([src/decoder/prediction.cc])
 AC_CONFIG_HEADERS([config.h])
 AC_CONFIG_MACRO_DIRS([m4])
 
@@ -133,14 +132,7 @@ AC_LANG_POP(C++)
 AC_CONFIG_FILES([Makefile
                  src/Makefile
                  src/util/Makefile
-                 src/decoder/Makefile
-                 src/display/Makefile
-                 src/input/Makefile
-                 src/encoder/Makefile
                  src/net/Makefile
-                 src/frontend/Makefile
-                 src/salsify/Makefile
-                 src/tests/Makefile
-                 man/Makefile])
+                 src/salsify/Makefile])
 
 AC_OUTPUT

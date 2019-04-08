@@ -43,8 +43,6 @@
 #include "packet.hh"
 #include "poller.hh"
 #include "optional.hh"
-#include "player.hh"
-#include "display.hh"
 #include "paranoid.hh"
 #include "procinfo.hh"
 
@@ -96,45 +94,6 @@ uint16_t ezrand()
   uniform_int_distribution<uint16_t> ud;
 
   return ud( rd );
-}
-
-queue<RasterHandle> display_queue;
-mutex mtx;
-condition_variable cv;
-
-void display_task( const VP8Raster & example_raster, bool fullscreen )
-{
-  VideoDisplay display { example_raster, fullscreen };
-
-  while( true ) {
-    unique_lock<mutex> lock( mtx );
-    cv.wait( lock, []() { return not display_queue.empty(); } );
-
-    while( not display_queue.empty() ) {
-      display.draw( display_queue.front() );
-      display_queue.pop();
-    }
-  }
-}
-
-void enqueue_frame( FramePlayer & player, const Chunk & frame )
-{
-  if ( frame.size() == 0 ) {
-    return;
-  }
-
-  const Optional<RasterHandle> raster = player.decode( frame );
-
-  async( launch::async,
-    [&raster]()
-    {
-      if ( raster.initialized() ) {
-        lock_guard<mutex> lock( mtx );
-        display_queue.push( raster.get() );
-        cv.notify_all();
-      }
-    }
-  );
 }
 
 int main( int argc, char *argv[] )

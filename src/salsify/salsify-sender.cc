@@ -42,18 +42,14 @@
 #include <unordered_map>
 #include <vector>
 
-#include "camera.hh"
-#include "encoder.hh"
 #include "exception.hh"
 #include "finally.hh"
 #include "pacer.hh"
 #include "packet.hh"
-#include "paranoid.hh"
 #include "poller.hh"
 #include "procinfo.hh"
 #include "socket.hh"
 #include "socketpair.hh"
-#include "yuv4mpeg.hh"
 #include "fecpp.h"
 
 using namespace std;
@@ -87,79 +83,6 @@ class AverageEncodingTime {
     return static_cast<uint32_t>(value_);
   }
 };
-
-struct EncodeJob {
-  string name;
-
-  RasterHandle raster;
-
-  Encoder encoder;
-  EncoderMode mode;
-
-  uint8_t y_ac_qi;
-  size_t target_size;
-
-  EncodeJob(const string &name,
-            RasterHandle raster,
-            const Encoder &encoder,
-            const EncoderMode mode,
-            const uint8_t y_ac_qi,
-            const size_t target_size)
-      : name(name), raster(raster), encoder(encoder), mode(mode), y_ac_qi(y_ac_qi), target_size(target_size) {
-  }
-};
-
-struct EncodeOutput {
-  Encoder encoder;
-  vector<uint8_t> frame;
-  uint32_t source_minihash;
-  milliseconds encode_time;
-  string job_name;
-  uint8_t y_ac_qi;
-
-  EncodeOutput(Encoder &&encoder,
-               vector<uint8_t> &&frame,
-               const uint32_t source_minihash,
-               const milliseconds encode_time,
-               const string &job_name,
-               const uint8_t y_ac_qi)
-      : encoder(move(encoder)),
-        frame(move(frame)),
-        source_minihash(source_minihash),
-        encode_time(encode_time),
-        job_name(job_name),
-        y_ac_qi(y_ac_qi) {
-  }
-};
-
-EncodeOutput do_encode_job(EncodeJob &&encode_job) {
-  vector<uint8_t> output;
-
-  uint32_t source_minihash = encode_job.encoder.minihash();
-
-  const auto encode_beginning = system_clock::now();
-
-  uint8_t quantizer_in_use = 0;
-
-  switch (encode_job.mode) {
-    case CONSTANT_QUANTIZER:
-      output = encode_job.encoder.encode_with_quantizer(encode_job.raster.get(), encode_job.y_ac_qi);
-      quantizer_in_use = encode_job.y_ac_qi;
-      break;
-
-    case TARGET_FRAME_SIZE:
-      output = encode_job.encoder.encode_with_target_size(encode_job.raster.get(), encode_job.target_size);
-      break;
-
-    default:
-      throw runtime_error("unsupported encoding mode.");
-  }
-
-  const auto encode_ending = system_clock::now();
-  const auto ms_elapsed = duration_cast<milliseconds>(encode_ending - encode_beginning);
-
-  return {move(encode_job.encoder), move(output), source_minihash, ms_elapsed, encode_job.name, quantizer_in_use};
-}
 
 size_t target_size(uint32_t avg_delay,
                    const uint64_t last_acked,
