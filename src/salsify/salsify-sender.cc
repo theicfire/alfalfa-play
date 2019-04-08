@@ -28,6 +28,7 @@
 
 #include <getopt.h>
 
+#include <signal.h>
 #include <algorithm>
 #include <chrono>
 #include <cmath>
@@ -213,57 +214,69 @@ int main(int argc, char *argv[]) {
     return EXIT_FAILURE;
   }
 
-  /* construct Socket for outgoing datagrams */
-  UDPSocket socket;
-  socket.bind(Address("0", "9000"));
-  socket.set_timestamps();
 
   vector<uint8_t> frame;
   for (int i = 0; i < 80 * 1360; i++) {
     frame.push_back(i % 256);
   }
 
-  uint32_t frame_no = 0;
-  system_clock::time_point last_sent = system_clock::now();
-  uint16_t connection_id = 1337;
-
-  cout << "Waiting to receive" << endl;
-  const auto new_fragment = socket.recv();
-  socket.connect(new_fragment.source_address);
-  cout << "Done receiving" << endl;
-  /* handle events */
   while (true) {
-    FragmentedFrame ff{connection_id,
-                       1,
-                       1,
-                       frame_no,
-                       static_cast<uint32_t>(duration_cast<microseconds>(system_clock::now() - last_sent).count()),
-                       frame};
-    cout << "Sending frame " << frame_no << " with " << ff.packets().size() << " packets" << endl;
-    for (const auto &packet : ff.packets()) {
-      string packet_string = packet.to_string();
+    /* construct Socket for outgoing datagrams */
+    UDPSocket socket;
+    socket.bind(Address("0", "9000"));
+    socket.set_timestamps();
+    uint32_t frame_no = 0;
+    system_clock::time_point last_sent = system_clock::now();
+    uint16_t connection_id = 1337;
 
-      // cout << "\nSending packet " << string_to_hex(packet_string) <<
-      // endl;
-      socket.send(packet.to_string());
+    cout << "Waiting to receive" << endl;
+    const auto new_fragment = socket.recv();
+    socket.connect(new_fragment.source_address);
+    cout << "Done receiving" << endl;
+    /* handle events */
+    while (true) {
+      FragmentedFrame ff{connection_id,
+                         1,
+                         1,
+                         frame_no,
+                         static_cast<uint32_t>(duration_cast<microseconds>(system_clock::now() - last_sent).count()),
+                         frame};
+      cout << "Sending frame " << frame_no << " with " << ff.packets().size() << " packets" << endl;
+      bool no_error = true;
+      for (const auto &packet : ff.packets()) {
+        string packet_string = packet.to_string();
+
+        // cout << "\nSending packet " << string_to_hex(packet_string) <<
+        // endl;
+        try {
+          socket.send(packet.to_string());
+        } catch (const std::exception &e) {  // reference to the base of a polymorphic object
+          cout << "Failed to send" << endl;
+          no_error = false;
+          break;
+        }
+      }
+      if (!no_error) {
+        break;
+      }
+      last_sent = system_clock::now();
+      frame_no += 1;
+      // for (int i = 0; i < 160; i++) {
+      //   frame_no += 1;
+      //   if (count % 100 == 0) {
+      //     cout << "Sending " << frame_no << endl;
+      //   }
+      //   char buffer[1400];
+      //   memset(buffer, 'X', 1400);
+
+      //   sprintf(buffer + 10, "%d", frame_no);
+      //   string msg = buffer;
+      //   socket.send(msg);
+      //   // usleep(100);
+      // }
+
+      usleep(40000);
     }
-    last_sent = system_clock::now();
-    frame_no += 1;
-    // for (int i = 0; i < 160; i++) {
-    //   frame_no += 1;
-    //   if (count % 100 == 0) {
-    //     cout << "Sending " << frame_no << endl;
-    //   }
-    //   char buffer[1400];
-    //   memset(buffer, 'X', 1400);
-
-    //   sprintf(buffer + 10, "%d", frame_no);
-    //   string msg = buffer;
-    //   socket.send(msg);
-    //   // usleep(100);
-    // }
-
-    usleep(40000);
   }
 
   return EXIT_FAILURE;
