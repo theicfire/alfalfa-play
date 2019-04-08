@@ -82,7 +82,7 @@ public:
 
 void usage( const char *argv0 )
 {
-  cerr << "Usage: " << argv0 << " [-f, --fullscreen] [--verbose] PORT WIDTH HEIGHT" << endl;
+  cerr << "Usage: " << argv0 << " HOST PORT" << endl;
 }
 
 uint16_t ezrand()
@@ -100,36 +100,14 @@ int main( int argc, char *argv[] )
     abort();
   }
 
-  const option command_line_options[] = {
-    { "fullscreen", no_argument, nullptr, 'f' },
-    { "verbose",    no_argument, nullptr, 'v' },
-    { 0, 0, 0, 0 }
-  };
-
-  while ( true ) {
-    const int opt = getopt_long( argc, argv, "f", command_line_options, nullptr );
-
-    if ( opt == -1 ) {
-      break;
-    }
-
-    switch ( opt ) {
-    case 'f':
-      break;
-
-    case 'v':
-      break;
-
-    default:
-      usage( argv[ 0 ] );
-      return EXIT_FAILURE;
-    }
-  }
-
-  if ( optind + 2 >= argc ) {
+  if (argc < 3) {
     usage( argv[ 0 ] );
     return EXIT_FAILURE;
   }
+
+  char* address = argv[1];
+  int port = atoi(argv[2]);
+  cout << "Listen on " << address << ":" << port << endl;
 
   /* choose a random connection_id */
   const uint16_t connection_id = 1337; // ezrand();
@@ -137,7 +115,7 @@ int main( int argc, char *argv[] )
 
   /* construct Socket for incoming  datagrams */
   UDPSocket socket;
-  socket.connect(Address("127.0.0.1", "9000"));
+  socket.connect(Address(address, port));
   socket.set_timestamps();
 
   /* frame no => FragmentedFrame; used when receiving packets out of order */

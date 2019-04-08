@@ -99,10 +99,7 @@ size_t target_size(uint32_t avg_delay,
 }
 
 void usage(const char *argv0) {
-  cerr << "Usage: " << argv0 << " [-m,--mode MODE] [-d, --device CAMERA] [-p, --pixfmt PIXEL_FORMAT]"
-       << " [-u,--update-rate RATE] [--log-mem-usage] HOST PORT CONNECTION_ID" << endl
-       << endl
-       << "Accepted MODEs are s1, s2 (default), conventional." << endl;
+  cerr << "Usage: " << argv0 << " PORT" << endl;
 }
 
 uint64_t ack_seq_no(const AckPacket &ack, const vector<uint64_t> &cumulative_fpf) {
@@ -195,25 +192,7 @@ void benchmark_fec(size_t k, size_t n)
 
 }
 
-
-
-
-
-
-int main(int argc, char *argv[]) {
-  /* check the command-line arguments */
-  if (argc < 1) { /* for sticklers */
-    abort();
-  }
-
-  if (argc < 4) {
-    usage(argv[0]);
-    return EXIT_FAILURE;
-  }
-
-
-
-
+void run_fec_stuff() {
    const int Ms[] = {1, 2, 3, 4, 5, 7, 8, 16, 32, 64, 128, 0 };
    const int Ks[] = {1,2,3,4,5,6,7,8,9,10,15,16,17,20,31,32,33,63,64,65,127 ,0};
 
@@ -231,9 +210,26 @@ int main(int argc, char *argv[]) {
          benchmark_fec(k, m);
          }
       }
+}
 
 
 
+
+
+
+int main(int argc, char *argv[]) {
+  /* check the command-line arguments */
+  if (argc < 1) { /* for sticklers */
+    abort();
+  }
+
+  if (argc < 2) {
+    usage(argv[0]);
+    return EXIT_FAILURE;
+  }
+  int port = atoi(argv[1]);
+
+  run_fec_stuff();
 
   vector<uint8_t> frame;
   for (int i = 0; i < 80 * 1360; i++) {
@@ -243,13 +239,13 @@ int main(int argc, char *argv[]) {
   while (true) {
     /* construct Socket for outgoing datagrams */
     UDPSocket socket;
-    socket.bind(Address("0", "9000"));
+    socket.bind(Address("0", port));
     socket.set_timestamps();
     uint32_t frame_no = 0;
     system_clock::time_point last_sent = system_clock::now();
     uint16_t connection_id = 1337;
 
-    cout << "Waiting to receive" << endl;
+    cout << "Waiting for a receiver to send a message at port " << port << endl;
     const auto new_fragment = socket.recv();
     socket.connect(new_fragment.source_address);
     cout << "Done receiving" << endl;
