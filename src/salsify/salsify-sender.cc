@@ -43,11 +43,9 @@
 #include <vector>
 
 #include "exception.hh"
-#include "finally.hh"
 #include "pacer.hh"
 #include "packet.hh"
 #include "poller.hh"
-#include "procinfo.hh"
 #include "socket.hh"
 #include "socketpair.hh"
 #include "fecpp.h"

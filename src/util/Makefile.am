@@ -10,5 +10,4 @@ SUFFIXES = .asm
 libalfalfautil_a_SOURCES = chunk.hh exception.hh file.cc \
 	file_descriptor.hh file.hh \
 	optional.hh \
-	mmap_region.hh mmap_region.cc \
-	finally.hh
+	mmap_region.hh mmap_region.cc
