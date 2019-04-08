@@ -64,7 +64,7 @@ public:
   uint32_t add( const uint64_t timestamp_us, const int32_t grace )
   {
     assert( timestamp_us >= last_update_ );
-    uint32_t ret = timestamp_us - last_update_ - grace;
+    uint32_t ret = max( 0l, static_cast<int64_t>( timestamp_us - last_update_ - grace ) );
     
 
     if ( value_ < 0 ) {
