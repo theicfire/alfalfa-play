@@ -5,9 +5,6 @@ AC_PREREQ([2.61])
 AC_INIT([alfalfa], [0.1], [excamera@cs.stanford.edu])
 AM_INIT_AUTOMAKE([foreign tar-ustar])
 AC_CONFIG_HEADERS([config.h])
-AC_CONFIG_MACRO_DIRS([m4])
-
-m4_ifdef([AM_SILENT_RULES], [AM_SILENT_RULES([yes])])
 
 # Checks for programs.
 AC_PROG_CXX
