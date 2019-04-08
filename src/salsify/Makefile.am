@@ -1,4 +1,4 @@
-AM_CPPFLAGS = -I$(srcdir)/../util -I$(srcdir)/../decoder -I$(srcdir)/../display -I$(srcdir)/../input -I$(srcdir)/../encoder -I$(srcdir)/../net $(X264_CFLAGS) $(CXX11_FLAGS)
+AM_CPPFLAGS = -I$(srcdir)/../util -I$(srcdir)/../decoder -I$(srcdir)/../display -I$(srcdir)/../input -I$(srcdir)/../encoder -I$(srcdir)/../net -I$(srcdir)/../../../fecpp $(X264_CFLAGS) $(CXX11_FLAGS)
 AM_CXXFLAGS = $(PICKY_CXXFLAGS) $(NODEBUG_CXXFLAGS)
 AM_LDFLAGS = $(STATIC_BUILD_FLAG)
 BASE_LDADD = ../input/libalfalfainput.a ../decoder/libalfalfadecoder.a ../util/libalfalfautil.a $(X264_LIBS)
@@ -11,7 +11,7 @@ endif
 bin_PROGRAMS = salsify-sender fake-webcam $(VP8PLAY_BUILD)
 
 salsify_sender_SOURCES = salsify-sender.cc
-salsify_sender_LDADD = ../net/libnet.a ../encoder/libalfalfaencoder.a $(BASE_LDADD)
+salsify_sender_LDADD = ../net/libnet.a ../encoder/libalfalfaencoder.a ../../../fecpp/libfecpp.a $(BASE_LDADD)
 salsify_sender_LDFLAGS = -pthread
 
 salsify_receiver_SOURCES = salsify-receiver.cc
